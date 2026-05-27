@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LBC Express — Fleet Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,800;1,9..40,400&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --red:#CC2027;--red-d:#A01820;--red-l:#FAEAEA;--red-m:rgba(204,32,39,.12);
+  --yellow:#F5A800;--yellow-l:#FEF5E0;
+  --bg:#F0F0F5;--card:#FFFFFF;--text:#111116;
+  --muted:#5E5E66;--border:rgba(0,0,0,.09);
+  --green:#0F7F4A;--green-l:#E3F6EE;
+  --ai:#5B35CE;--ai-l:#EDE8FD;--ai-m:rgba(91,53,206,.1);
+  --fuel:#E05E00;--fuel-l:#FEF0E6;
+  --mono:'JetBrains Mono',monospace;
+}
+body{
+  background:#101018;
+  font-family:'DM Sans',sans-serif;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:40px 20px;
+}
+
+/* ── PHONE SHELL ── */
+.phone{
+  width:375px;height:820px;
+  background:var(--bg);border-radius:48px;overflow:hidden;
+  border:2px solid #2A2A3A;display:flex;flex-direction:column;
+  box-shadow:0 0 0 1px rgba(255,255,255,.05),0 48px 96px rgba(0,0,0,.7);
+  flex-shrink:0;position:relative;
+}
+.status-bar{
+  background:var(--red);color:white;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 22px 8px;font-size:12px;font-weight:600;flex-shrink:0;
+}
+.status-bar .t{font-size:17px;font-weight:800;font-family:var(--mono)}
+.sig{display:flex;gap:4px;align-items:center}
+
+/* ── SCREENS ── */
+.screen{display:none;flex-direction:column;height:100%;overflow:hidden}
+.screen.active{display:flex}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding-bottom:16px}
+.scroll::-webkit-scrollbar{width:0}
+
+/* ── SYNC BAR ── */
+.sync{
+  font-size:11px;font-weight:600;
+  padding:5px 14px;flex-shrink:0;
+  display:flex;align-items:center;gap:6px;justify-content:center;
+}
+.sync.on{background:#E0F5EC;color:#085A30}
+.sync.ai{background:var(--ai-l);color:#3B22A0}
+.sync.warn{background:var(--yellow-l);color:#7A5200}
+.dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 1.8s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ── HEADER ── */
+.hdr{background:var(--red);color:white;padding:10px 18px 14px;flex-shrink:0}
+.hdr-top{display:flex;align-items:center;justify-content:space-between}
+.hdr-title{font-size:17px;font-weight:800;letter-spacing:-.2px}
+.hdr-sub{font-size:11px;opacity:.65;margin-top:2px}
+.ibtn{
+  width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.18);
+  border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  color:white;font-size:15px;transition:background .15s;flex-shrink:0;
+}
+.ibtn:hover{background:rgba(255,255,255,.28)}
+.backbtn{
+  background:rgba(255,255,255,.18);border:none;color:white;
+  border-radius:20px;padding:6px 13px;font-size:11px;cursor:pointer;
+  font-weight:700;letter-spacing:.3px;transition:background .15s;
+}
+.backbtn:hover{background:rgba(255,255,255,.28)}
+
+/* ── BOTTOM NAV ── */
+.bnav{
+  height:68px;background:white;border-top:.5px solid var(--border);
+  display:flex;align-items:center;flex-shrink:0;
+}
+.ni{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  cursor:pointer;padding:8px 0;background:none;border:none;
+  color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.3px;
+  transition:color .15s;text-transform:uppercase;
+}
+.ni:hover,.ni.active{color:var(--red)}
+.nicon{font-size:20px;line-height:1}
+
+/* ── SHARED COMPONENTS ── */
+.sec{padding:14px 14px 0}
+.sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sec-t{font-size:13px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.8px}
+.see-all{font-size:12px;color:var(--red);font-weight:700;cursor:pointer;background:none;border:none}
+
+/* metric grid */
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 14px 0}
+.dc{background:white;border-radius:14px;padding:12px 14px;border:.5px solid var(--border)}
+.dc.full{grid-column:span 2}
+.dc.fc{background:linear-gradient(135deg,#C04800,#E05E00);border-color:transparent}
+.dc.ac{background:linear-gradient(135deg,#3B22A0,#5B35CE);border-color:transparent}
+.dv2{font-size:24px;font-weight:800;color:var(--text);font-family:var(--mono);letter-spacing:-.5px}
+.dc.fc .dv2,.dc.ac .dv2{color:white}
+.dl2{font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
+.dc.fc .dl2,.dc.ac .dl2{color:rgba(255,255,255,.6)}
+.dd{font-size:11px;font-weight:700;margin-top:3px}
+.dc.fc .dd,.dc.ac .dd{color:rgba(255,255,255,.8)}
+.up{color:var(--green)}.dn{color:var(--red)}
+
+/* fuel bars */
+.fbar-wrap{display:flex;flex-direction:column;gap:0}
+.fbar-row{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.fbar-lbl{font-size:10px;color:var(--muted);width:36px;text-align:right;flex-shrink:0;font-weight:700;font-family:var(--mono)}
+.fbar-track{flex:1;height:7px;background:#F0F0F5;border-radius:99px;overflow:hidden}
+.fbar-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--fuel),#FF8C40);animation:grow .8s ease-out backwards}
+.fbar-fill.saved{background:linear-gradient(90deg,var(--green),#40C87A)}
+@keyframes grow{from{width:0 !important}}
+.fbar-val{font-size:10px;font-weight:800;color:var(--text);width:40px;flex-shrink:0;font-family:var(--mono)}
+
+/* fleet map */
+.fmap{margin:0 14px 0;height:120px;background:#DFE8F5;border-radius:14px;overflow:hidden;position:relative;border:.5px solid var(--border)}
+.fmap-svg{width:100%;height:100%;position:absolute;inset:0}
+.fmap-legend{position:absolute;bottom:7px;right:8px;background:rgba(0,0,0,.6);color:white;font-size:9px;font-weight:700;padding:3px 8px;border-radius:8px;letter-spacing:.5px}
+
+/* ROI widget */
+.roi{margin:10px 14px 0;background:#0C0C18;border-radius:16px;padding:14px;color:white}
+.roi-title{font-size:9px;font-weight:800;opacity:.5;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px}
+.roi-bars-wrap{display:flex;align-items:flex-end;gap:6px;height:64px;margin-bottom:8px}
+.roi-bw{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.roi-b{border-radius:5px 5px 0 0;width:100%}
+.roi-b.cost{background:rgba(204,32,39,.65)}
+.roi-b.saving{background:linear-gradient(180deg,#40C87A,#0F7F4A)}
+.roi-bl{font-size:8px;opacity:.5;text-align:center;font-weight:700;letter-spacing:.3px}
+.roi-legend{display:flex;gap:14px;margin-bottom:10px;justify-content:center}
+.roi-leg{display:flex;align-items:center;gap:5px;font-size:9px;opacity:.6;font-weight:700}
+.roi-leg-dot{width:8px;height:8px;border-radius:2px}
+.roi-sum{display:flex;gap:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)}
+.roi-stat{flex:1;text-align:center}
+.roi-sv{font-size:14px;font-weight:800;font-family:var(--mono)}
+.roi-sl{font-size:8px;opacity:.5;margin-top:2px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+
+/* CBA bars */
+.cba-wrap{padding:0 14px;margin-top:10px}
+.cba-card{background:white;border-radius:14px;padding:14px;border:.5px solid var(--border)}
+.cba-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.cba-lbl{font-size:11px;color:var(--muted);font-weight:700;width:64px;flex-shrink:0;text-align:right}
+.cba-track{flex:1;height:12px;border-radius:6px;background:var(--bg);overflow:hidden}
+.cba-fill{height:100%;border-radius:6px}
+.cba-fill.cost-f{background:rgba(204,32,39,.65)}
+.cba-fill.save-f{background:linear-gradient(90deg,#0F7F4A,#40C87A)}
+.cba-num{font-size:11px;font-weight:800;font-family:var(--mono);width:58px;color:var(--text)}
+.cba-totals{display:flex;gap:10px;padding-top:10px;border-top:.5px solid var(--border);margin-top:4px}
+.cba-total{flex:1;text-align:center}
+.cba-tv{font-size:15px;font-weight:800;font-family:var(--mono)}
+.cba-tl{font-size:9px;color:var(--muted);font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+
+/* driver rows */
+.driver-list{display:flex;flex-direction:column;gap:7px;padding:0 14px 14px}
+.dr{background:white;border-radius:12px;border:.5px solid var(--border);padding:10px 13px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:border-color .15s}
+.dr:hover{border-color:var(--red)}
+.dava{width:34px;height:34px;border-radius:50%;background:var(--red-l);color:var(--red);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono)}
+.dr-name{font-size:13px;font-weight:800;color:var(--text)}
+.dr-sub{font-size:11px;color:var(--muted)}
+.dr-fuel{font-size:10px;color:var(--fuel);font-weight:700;margin-top:2px;font-family:var(--mono)}
+.dr-pct{margin-left:auto;font-size:14px;font-weight:800;font-family:var(--mono)}
+.ph{color:var(--green)}.pm{color:var(--yellow)}
+
+/* privacy items */
+.priv-item{background:white;border-radius:12px;border:.5px solid var(--border);padding:11px 14px;margin:0 14px 7px}
+.priv-item.alert-item{border-left:3px solid var(--green);background:var(--green-l)}
+.priv-item.warn-item{border-left:3px solid var(--yellow);background:var(--yellow-l)}
+.pi-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.pi-icon{font-size:16px}
+.pi-title{font-size:12px;font-weight:800;color:var(--text)}
+.pi-status{margin-left:auto;font-size:9px;font-weight:800;padding:2px 8px;border-radius:10px;letter-spacing:.5px}
+.pi-status.ok{background:var(--green-l);color:#085A30}
+.pi-status.warn{background:var(--yellow-l);color:#7A5200}
+.pi-body{font-size:11px;color:var(--muted);line-height:1.5}
+
+@keyframes dashMove{to{stroke-dashoffset:-24}}
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone-dash">
+
+  <div class="status-bar">
+    <span class="t">9:41</span>
+    <div class="sig">
+      <svg width="15" height="11" viewBox="0 0 15 11" fill="white"><rect x="0" y="5" width="2.5" height="6" rx=".8"/><rect x="4" y="3.5" width="2.5" height="7.5" rx=".8"/><rect x="8" y="1.5" width="2.5" height="9.5" rx=".8"/><rect x="12" y="0" width="2.5" height="11" rx=".8"/></svg>
+      <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x=".5" y=".5" width="18" height="10" rx="2.5" stroke="white"/><rect x="19.5" y="3.5" width="2" height="4" rx="1" fill="white"/><rect x="2" y="2" width="14" height="7" rx="1.5" fill="white"/></svg>
+    </div>
+  </div>
+
+  <!-- ══════════ MAIN DASHBOARD ══════════ -->
+  <div id="d-main" class="screen active">
+    <div class="hdr">
+      <div class="hdr-top">
+        <div><div class="hdr-title">Fleet Dashboard</div><div class="hdr-sub">AI-Logistics · May 21, 2026</div></div>
+        <button class="ibtn" onclick="alert('Exporting report...')">📤</button>
+      </div>
+    </div>
+    <div class="sync ai"><span class="dot"></span>AI Engine Active · ₱114/L baseline · 24 riders live</div>
+
+    <div class="scroll">
+
+      <!-- FUEL HERO -->
+      <div style="margin:12px 14px 0;background:linear-gradient(135deg,#0B3D1E 0%,#1A5C30 100%);border-radius:16px;padding:14px;color:white;">
+        <div style="font-size:10px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:4px;">⛽ Fleet Fuel Savings · Today</div>
+        <div style="font-size:34px;font-weight:900;color:#5AC878;line-height:1;font-family:var(--mono);" id="dash-fuel-hero-val">₱2,736</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:2px;margin-bottom:12px;">24 riders · ₱114/L baseline · AI-optimized</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div style="background:rgba(255,255,255,.08);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:14px;font-weight:800;color:white;font-family:var(--mono);">87.4L</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.45);margin-top:2px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;">Fuel Saved</div>
+          </div>
+          <div style="background:rgba(255,255,255,.08);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:14px;font-weight:800;color:white;font-family:var(--mono);">312km</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.45);margin-top:2px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;">KM Reduced</div>
+          </div>
+          <div style="background:rgba(255,255,255,.08);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:14px;font-weight:800;color:white;font-family:var(--mono);">18.3%</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.45);margin-top:2px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;">Efficiency ↑</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI FLEET LIVE STATUS -->
+      <div style="margin:10px 14px 0;background:white;border-radius:14px;border:.5px solid var(--border);padding:12px 14px;">
+        <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
+          🏍 Live Fleet · AI Status
+          <span style="background:var(--green-l);color:#085A30;font-size:10px;font-weight:800;padding:2px 8px;border-radius:20px;">All Optimized</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-top:.5px solid var(--border);">
+          <div style="width:10px;height:10px;border-radius:50%;background:#1A9B5A;flex-shrink:0;"></div>
+          <div style="font-size:12px;font-weight:700;color:var(--text);flex:1;">Juan dela Cruz</div>
+          <div style="font-size:10px;color:var(--muted);">Caloocan · 4/12</div>
+          <div style="font-size:11px;font-weight:800;color:var(--green);font-family:var(--mono);">₱94.62</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-top:.5px solid var(--border);">
+          <div style="width:10px;height:10px;border-radius:50%;background:#1A9B5A;flex-shrink:0;"></div>
+          <div style="font-size:12px;font-weight:700;color:var(--text);flex:1;">Miguel Santos</div>
+          <div style="font-size:10px;color:var(--muted);">Malabon · 6/9</div>
+          <div style="font-size:11px;font-weight:800;color:var(--green);font-family:var(--mono);">₱78.66</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-top:.5px solid var(--border);">
+          <div style="width:10px;height:10px;border-radius:50%;background:#F5A800;flex-shrink:0;"></div>
+          <div style="font-size:12px;font-weight:700;color:var(--text);flex:1;">Rosa Luna</div>
+          <div style="font-size:10px;color:var(--muted);">QC · 2/7</div>
+          <div style="font-size:11px;font-weight:800;color:var(--green);font-family:var(--mono);">₱39.90</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-top:.5px solid var(--border);">
+          <div style="width:10px;height:10px;border-radius:50%;background:#1A9B5A;flex-shrink:0;"></div>
+          <div style="font-size:12px;font-weight:700;color:var(--text);flex:1;">Carlo Bautista</div>
+          <div style="font-size:10px;color:var(--muted);">Pasig · 8/11</div>
+          <div style="font-size:11px;font-weight:800;color:var(--green);font-family:var(--mono);">₱106.02</div>
+        </div>
+      </div>
+
+      <!-- KPI GRID -->
+      <div class="dgrid">
+        <div class="dc fc">
+          <div class="dl2">Fuel Saved Today</div>
+          <div class="dv2" id="dash-fuel">₱2,736</div>
+          <div class="dd">↑ +18% vs yesterday</div>
+        </div>
+        <div class="dc ac">
+          <div class="dl2">AI Efficiency</div>
+          <div class="dv2">87%</div>
+          <div class="dd">Route optimization rate</div>
+        </div>
+        <div class="dc">
+          <div class="dl2">Active Riders</div>
+          <div class="dv2">24</div>
+          <div class="dd up">↑ +3 vs yesterday</div>
+        </div>
+        <div class="dc">
+          <div class="dl2">On-Time Rate</div>
+          <div class="dv2">91%</div>
+          <div class="dd up">↑ +4% with AI</div>
+        </div>
+        <div class="dc">
+          <div class="dl2">Km Avoided</div>
+          <div class="dv2">198km</div>
+          <div class="dd up">AI rerouted today</div>
+        </div>
+        <div class="dc">
+          <div class="dl2">Parcels</div>
+          <div class="dv2">318</div>
+          <div class="dd up">↑ +12%</div>
+        </div>
+      </div>
+
+      <!-- LIVE FLEET MAP -->
+      <div class="sec"><div class="sec-hdr"><span class="sec-t">Live Fleet Map</span><span style="font-size:9px;font-weight:800;color:var(--ai);text-transform:uppercase;letter-spacing:.8px;">🤖 AI Active</span></div></div>
+      <div class="fmap">
+        <svg class="fmap-svg" viewBox="0 0 347 120" xmlns="http://www.w3.org/2000/svg">
+          <rect width="347" height="120" fill="#DDE7F4"/>
+          <rect x="0" y="45" width="347" height="14" fill="#F0F4FF"/>
+          <rect x="0" y="82" width="347" height="10" fill="#F0F4FF"/>
+          <rect x="55" y="0" width="10" height="120" fill="#F0F4FF"/>
+          <rect x="130" y="0" width="12" height="120" fill="#F0F4FF"/>
+          <rect x="210" y="0" width="10" height="120" fill="#F0F4FF"/>
+          <rect x="280" y="0" width="10" height="120" fill="#F0F4FF"/>
+          <polyline points="20,87 55,87 55,52 90,52 136,52 175,52 215,65 280,87 325,87" stroke="#5B35CE" stroke-width="2.5" fill="none" stroke-dasharray="7 3" opacity=".75" style="animation:dashMove 2s linear infinite"/>
+          <polyline points="20,52 55,52 136,30 215,52 280,52" stroke="#5B35CE" stroke-width="2" fill="none" stroke-dasharray="5 3" opacity=".5" style="animation:dashMove 2.5s linear infinite"/>
+          <circle cx="22" cy="87" r="9" fill="#CC2027" stroke="white" stroke-width="2"/>
+          <text x="22" y="91" text-anchor="middle" fill="white" font-size="8">🏍</text>
+          <circle cx="90" cy="52" r="9" fill="#CC2027" stroke="white" stroke-width="2"/>
+          <text x="90" y="56" text-anchor="middle" fill="white" font-size="8">🏍</text>
+          <circle cx="175" cy="52" r="9" fill="#CC2027" stroke="white" stroke-width="2"/>
+          <text x="175" y="56" text-anchor="middle" fill="white" font-size="8">🏍</text>
+          <circle cx="232" cy="87" r="9" fill="#0F7F4A" stroke="white" stroke-width="2"/>
+          <text x="232" y="91" text-anchor="middle" fill="white" font-size="8">✓</text>
+          <circle cx="305" cy="52" r="9" fill="#F5A800" stroke="white" stroke-width="2"/>
+          <text x="305" y="56" text-anchor="middle" fill="white" font-size="8">⚠</text>
+          <text x="136" y="43" text-anchor="middle" fill="#9AABC5" font-size="7" font-weight="700">MANILA</text>
+          <text x="280" y="43" text-anchor="middle" fill="#9AABC5" font-size="7" font-weight="700">BULACAN</text>
+        </svg>
+        <div class="fmap-legend">🔴 Active  🟢 Done  🟡 Delayed</div>
+      </div>
+
+      <!-- HOURLY FUEL SAVINGS -->
+      <div class="sec"><div class="sec-hdr"><span class="sec-t">Hourly Fuel Savings</span><span style="font-size:10px;color:var(--fuel);font-weight:800;">₱114/L baseline</span></div></div>
+      <div style="padding:0 14px">
+        <div style="background:white;border-radius:14px;padding:14px;border:.5px solid var(--border)">
+          <div class="fbar-wrap">
+            <div class="fbar-row">
+              <span class="fbar-lbl">8AM</span>
+              <div class="fbar-track"><div class="fbar-fill saved" style="width:45%;animation-delay:.1s"></div></div>
+              <span class="fbar-val" style="color:var(--green)">₱342</span>
+            </div>
+            <div class="fbar-row">
+              <span class="fbar-lbl">9AM</span>
+              <div class="fbar-track"><div class="fbar-fill saved" style="width:80%;animation-delay:.2s"></div></div>
+              <span class="fbar-val" style="color:var(--green)">₱614</span>
+            </div>
+            <div class="fbar-row">
+              <span class="fbar-lbl">10AM</span>
+              <div class="fbar-track"><div class="fbar-fill saved" style="width:65%;animation-delay:.3s"></div></div>
+              <span class="fbar-val" style="color:var(--green)">₱498</span>
+            </div>
+            <div class="fbar-row">
+              <span class="fbar-lbl">11AM</span>
+              <div class="fbar-track"><div class="fbar-fill saved" style="width:55%;animation-delay:.4s"></div></div>
+              <span class="fbar-val" style="color:var(--green)">₱421</span>
+            </div>
+            <div class="fbar-row">
+              <span class="fbar-lbl">Now</span>
+              <div class="fbar-track"><div class="fbar-fill" style="width:35%;animation-delay:.5s"></div></div>
+              <span class="fbar-val" style="color:var(--fuel)" id="now-fuel">₱863</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:12px;padding-top:10px;border-top:.5px solid var(--border)">
+            <div style="flex:1;text-align:center">
+              <div style="font-size:15px;font-weight:800;color:var(--green);font-family:var(--mono)" id="dash-total">₱2,736</div>
+              <div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Saved Today</div>
+            </div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:15px;font-weight:800;color:var(--fuel);font-family:var(--mono)">24.0L</div>
+              <div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Fuel Avoided</div>
+            </div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:15px;font-weight:800;color:var(--ai);font-family:var(--mono)">198km</div>
+              <div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Routes Cut</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3-YEAR ROI -->
+      <div class="roi" id="roi-widget">
+        <div class="roi-title">3-Year ROI Projection · ₱114/L Baseline</div>
+        <div class="roi-bars-wrap" id="roi-bars"></div>
+        <div class="roi-legend">
+          <div class="roi-leg"><div class="roi-leg-dot" style="background:rgba(204,32,39,.65)"></div>System Cost</div>
+          <div class="roi-leg"><div class="roi-leg-dot" style="background:#0F7F4A"></div>Fuel Savings</div>
+        </div>
+        <div class="roi-sum">
+          <div class="roi-stat"><div class="roi-sv" style="color:#40C87A">₱2.96M</div><div class="roi-sl">3-Yr Savings</div></div>
+          <div class="roi-stat"><div class="roi-sv" style="color:white">247%</div><div class="roi-sl">ROI</div></div>
+          <div class="roi-stat"><div class="roi-sv" style="color:#FF8C40">14 mo</div><div class="roi-sl">Break-Even</div></div>
+        </div>
+      </div>
+
+      <!-- CBA -->
+      <div class="sec"><div class="sec-hdr"><span class="sec-t">Cost–Benefit Analysis</span></div></div>
+      <div class="cba-wrap">
+        <div class="cba-card">
+          <div class="cba-row">
+            <span class="cba-lbl">Y1 Cost</span>
+            <div class="cba-track"><div class="cba-fill cost-f" style="width:85%;animation:grow .8s ease-out .1s backwards"></div></div>
+            <span class="cba-num" style="color:var(--red)">₱850K</span>
+          </div>
+          <div class="cba-row">
+            <span class="cba-lbl">Y1 Savings</span>
+            <div class="cba-track"><div class="cba-fill save-f" style="width:98%;animation:grow .8s ease-out .2s backwards"></div></div>
+            <span class="cba-num" style="color:var(--green)">₱987K</span>
+          </div>
+          <div class="cba-row">
+            <span class="cba-lbl">Y2 Cost</span>
+            <div class="cba-track"><div class="cba-fill cost-f" style="width:20%;animation:grow .8s ease-out .3s backwards"></div></div>
+            <span class="cba-num" style="color:var(--red)">₱200K</span>
+          </div>
+          <div class="cba-row">
+            <span class="cba-lbl">Y2 Savings</span>
+            <div class="cba-track"><div class="cba-fill save-f" style="width:100%;animation:grow .8s ease-out .4s backwards"></div></div>
+            <span class="cba-num" style="color:var(--green)">₱1.01M</span>
+          </div>
+          <div class="cba-row">
+            <span class="cba-lbl">Y3 Cost</span>
+            <div class="cba-track"><div class="cba-fill cost-f" style="width:20%;animation:grow .8s ease-out .5s backwards"></div></div>
+            <span class="cba-num" style="color:var(--red)">₱200K</span>
+          </div>
+          <div class="cba-row" style="margin-bottom:0">
+            <span class="cba-lbl">Y3 Savings</span>
+            <div class="cba-track"><div class="cba-fill save-f" style="width:95%;animation:grow .8s ease-out .6s backwards"></div></div>
+            <span class="cba-num" style="color:var(--green)">₱959K</span>
+          </div>
+          <div class="cba-totals">
+            <div class="cba-total"><div class="cba-tv" style="color:var(--red)">₱1.25M</div><div class="cba-tl">Total Cost</div></div>
+            <div class="cba-total"><div class="cba-tv" style="color:var(--green)">₱2.96M</div><div class="cba-tl">Total Savings</div></div>
+            <div class="cba-total"><div class="cba-tv" style="color:var(--ai)">+₱1.71M</div><div class="cba-tl">Net Benefit</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOP RIDERS -->
+      <div class="sec"><div class="sec-hdr"><span class="sec-t">Top Riders · Efficiency</span><button class="see-all" onclick="dShow('fleet')">View all →</button></div></div>
+      <div class="driver-list">
+        <div class="dr">
+          <div class="dava">JC</div>
+          <div>
+            <div class="dr-name">Juan dela Cruz</div>
+            <div class="dr-sub">12 stops · Caloocan</div>
+            <div class="dr-fuel">⛽ ₱94.62 saved · 8.3km shorter</div>
+          </div>
+          <span class="dr-pct ph">94%</span>
+        </div>
+        <div class="dr">
+          <div class="dava">MS</div>
+          <div>
+            <div class="dr-name">Miguel Santos</div>
+            <div class="dr-sub">9 stops · Malabon</div>
+            <div class="dr-fuel">⛽ ₱78.30 saved · 6.8km shorter</div>
+          </div>
+          <span class="dr-pct ph">91%</span>
+        </div>
+        <div class="dr">
+          <div class="dava">RL</div>
+          <div>
+            <div class="dr-name">Rosa Luna</div>
+            <div class="dr-sub">7 stops · QC</div>
+            <div class="dr-fuel">⛽ ₱45.60 saved · 4.0km shorter</div>
+          </div>
+          <span class="dr-pct pm">76%</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════ FLEET VIEW ══════════ -->
+  <div id="d-fleet" class="screen">
+    <div class="hdr">
+      <div class="hdr-top">
+        <div><div class="hdr-title">All Riders</div><div class="hdr-sub">24 active · May 21, 2026</div></div>
+        <button class="backbtn" onclick="dShow('main')">← Back</button>
+      </div>
+    </div>
+    <div class="sync ai"><span class="dot"></span>Live tracking · AI-optimized all routes</div>
+    <div class="scroll" style="padding-top:12px">
+
+      <!-- FLEET SUMMARY -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 14px;margin-bottom:10px;">
+        <div style="background:white;border-radius:12px;border:.5px solid var(--border);padding:10px;text-align:center;">
+          <div style="font-size:18px;font-weight:800;color:var(--green);font-family:var(--mono);">18</div>
+          <div style="font-size:9px;color:var(--muted);font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:.3px;">On Route</div>
+        </div>
+        <div style="background:white;border-radius:12px;border:.5px solid var(--border);padding:10px;text-align:center;">
+          <div style="font-size:18px;font-weight:800;color:var(--yellow);font-family:var(--mono);">4</div>
+          <div style="font-size:9px;color:var(--muted);font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:.3px;">Delayed</div>
+        </div>
+        <div style="background:white;border-radius:12px;border:.5px solid var(--border);padding:10px;text-align:center;">
+          <div style="font-size:18px;font-weight:800;color:var(--muted);font-family:var(--mono);">2</div>
+          <div style="font-size:9px;color:var(--muted);font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:.3px;">Break</div>
+        </div>
+      </div>
+
+      <!-- RIDER ROWS -->
+      <div class="driver-list" style="padding-bottom:0">
+        <div class="dr"><div class="dava">JC</div><div style="flex:1"><div class="dr-name">Juan dela Cruz</div><div class="dr-sub">Caloocan · 4/12 stops</div><div class="dr-fuel">⛽ ₱94.62 saved · On time</div></div><span class="dr-pct ph">94%</span></div>
+        <div class="dr"><div class="dava">MS</div><div style="flex:1"><div class="dr-name">Miguel Santos</div><div class="dr-sub">Malabon · 6/9 stops</div><div class="dr-fuel">⛽ ₱78.66 saved · On time</div></div><span class="dr-pct ph">91%</span></div>
+        <div class="dr"><div class="dava">CB</div><div style="flex:1"><div class="dr-name">Carlo Bautista</div><div class="dr-sub">Pasig · 8/11 stops</div><div class="dr-fuel">⛽ ₱106.02 saved · On time</div></div><span class="dr-pct ph">89%</span></div>
+        <div class="dr"><div class="dava" style="background:var(--yellow-l);color:#7A5200;">RL</div><div style="flex:1"><div class="dr-name">Rosa Luna</div><div class="dr-sub">QC · 2/7 stops</div><div class="dr-fuel">⛽ ₱39.90 saved · ⚠ 18 min delay</div></div><span class="dr-pct pm">76%</span></div>
+        <div class="dr"><div class="dava">AP</div><div style="flex:1"><div class="dr-name">Angelo Perez</div><div class="dr-sub">Marikina · 5/10 stops</div><div class="dr-fuel">⛽ ₱62.70 saved · On time</div></div><span class="dr-pct ph">88%</span></div>
+        <div class="dr"><div class="dava">LV</div><div style="flex:1"><div class="dr-name">Lito Villanueva</div><div class="dr-sub">Valenzuela · 7/8 stops</div><div class="dr-fuel">⛽ ₱88.92 saved · On time</div></div><span class="dr-pct ph">93%</span></div>
+        <div class="dr"><div class="dava" style="background:var(--yellow-l);color:#7A5200;">DM</div><div style="flex:1"><div class="dr-name">Diana Mercado</div><div class="dr-sub">Taguig · 3/9 stops</div><div class="dr-fuel">⛽ ₱34.20 saved · ⚠ 25 min delay</div></div><span class="dr-pct pm">71%</span></div>
+        <div class="dr"><div class="dava">RC</div><div style="flex:1"><div class="dr-name">Ramon Cruz</div><div class="dr-sub">Makati · 6/8 stops</div><div class="dr-fuel">⛽ ₱79.80 saved · On time</div></div><span class="dr-pct ph">90%</span></div>
+      </div>
+      <div style="text-align:center;padding:12px 14px;font-size:11px;color:var(--muted);font-weight:600;">+ 16 more riders active</div>
+    </div>
+  </div>
+
+  <!-- ══════════ FUEL REPORTS ══════════ -->
+  <div id="d-fuel" class="screen">
+    <div class="hdr">
+      <div class="hdr-top">
+        <div><div class="hdr-title">Fleet Fuel Reports</div><div class="hdr-sub">AI analytics · ₱114/L baseline</div></div>
+        <button class="ibtn" onclick="alert('Exporting fuel report...')">📤</button>
+      </div>
+    </div>
+    <div class="sync ai"><span class="dot"></span>AI Engine · Live fuel tracking · 24 riders</div>
+    <div class="scroll">
+
+      <!-- HERO -->
+      <div style="margin:12px 14px 0;background:linear-gradient(135deg,#0B3D1E 0%,#1A5C30 100%);border-radius:16px;padding:14px;color:white;">
+        <div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.8px;font-weight:700;margin-bottom:3px;">⛽ Fleet Total · May 2026</div>
+        <div style="font-size:34px;font-weight:900;color:#5AC878;line-height:1;font-family:var(--mono);" id="fuel-report-hero">₱38,420</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;margin-bottom:12px;">24 riders · AI-optimized routes · Full month</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div style="background:rgba(255,255,255,.09);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:14px;font-weight:800;color:white;font-family:var(--mono);">336.8L</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.45);margin-top:2px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;">Litres Saved</div>
+          </div>
+          <div style="background:rgba(255,255,255,.09);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:14px;font-weight:800;color:white;font-family:var(--mono);">2,774km</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.45);margin-top:2px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;">KM Reduced</div>
+          </div>
+          <div style="background:rgba(255,255,255,.09);border-radius:10px;padding:8px;text-align:center;">
+            <div style="font-size:14px;font-weight:800;color:white;font-family:var(--mono);">18.3%</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.45);margin-top:2px;text-transform:uppercase;letter-spacing:.3px;font-weight:700;">Efficiency ↑</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DAILY TREND -->
+      <div style="margin:10px 14px 0;background:white;border-radius:14px;border:.5px solid var(--border);padding:12px 14px;">
+        <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
+          Daily Savings · This Week
+          <span style="font-size:10px;font-weight:700;color:var(--muted);">₱/day</span>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:6px;height:80px;margin-bottom:8px;">
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+            <div style="font-size:9px;color:var(--green);font-weight:800;font-family:var(--mono);">₱2,541</div>
+            <div style="width:100%;background:linear-gradient(180deg,#40C87A,#0F7F4A);border-radius:4px 4px 0 0;height:52px;"></div>
+            <div style="font-size:9px;color:var(--muted);font-weight:700;">Mon</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+            <div style="font-size:9px;color:var(--green);font-weight:800;font-family:var(--mono);">₱2,688</div>
+            <div style="width:100%;background:linear-gradient(180deg,#40C87A,#0F7F4A);border-radius:4px 4px 0 0;height:55px;"></div>
+            <div style="font-size:9px;color:var(--muted);font-weight:700;">Tue</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+            <div style="font-size:9px;color:var(--green);font-weight:800;font-family:var(--mono);">₱2,312</div>
+            <div style="width:100%;background:linear-gradient(180deg,#40C87A,#0F7F4A);border-radius:4px 4px 0 0;height:47px;"></div>
+            <div style="font-size:9px;color:var(--muted);font-weight:700;">Wed</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+            <div style="font-size:9px;color:var(--red);font-weight:800;font-family:var(--mono);">₱2,736</div>
+            <div style="width:100%;background:var(--red);border-radius:4px 4px 0 0;height:56px;"></div>
+            <div style="font-size:9px;color:var(--red);font-weight:800;">Today</div>
+          </div>
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+            <div style="font-size:9px;color:var(--muted);font-weight:700;font-family:var(--mono);">—</div>
+            <div style="width:100%;background:#F0F0F5;border-radius:4px 4px 0 0;height:20px;border:1px dashed #CCC;"></div>
+            <div style="font-size:9px;color:var(--muted);font-weight:700;">Fri</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;padding-top:10px;border-top:.5px solid var(--border);">
+          <div style="flex:1;text-align:center;">
+            <div style="font-size:14px;font-weight:800;color:var(--green);font-family:var(--mono);">₱10,277</div>
+            <div style="font-size:9px;color:var(--muted);font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:.3px;">Week Total</div>
+          </div>
+          <div style="flex:1;text-align:center;">
+            <div style="font-size:14px;font-weight:800;color:var(--fuel);font-family:var(--mono);">₱2,569</div>
+            <div style="font-size:9px;color:var(--muted);font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:.3px;">Daily Avg</div>
+          </div>
+          <div style="flex:1;text-align:center;">
+            <div style="font-size:14px;font-weight:800;color:var(--ai);font-family:var(--mono);">↑ 11%</div>
+            <div style="font-size:9px;color:var(--muted);font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:.3px;">vs Last Week</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOP SAVERS -->
+      <div style="margin:10px 14px 0;background:white;border-radius:14px;border:.5px solid var(--border);padding:12px 14px;">
+        <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px;">Top Fuel Savers · Today</div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:.5px solid var(--border);">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--red-l);color:var(--red);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">CB</div>
+          <div style="flex:1;"><div style="font-size:12px;font-weight:700;color:var(--text);">Carlo Bautista</div><div style="font-size:10px;color:var(--muted);">0.93L saved · 9.3km shorter</div></div>
+          <div style="text-align:right;"><div style="font-size:13px;font-weight:800;color:var(--green);font-family:var(--mono);">₱106.02</div><div style="font-size:9px;color:var(--muted);">91% eff.</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:.5px solid var(--border);">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--red-l);color:var(--red);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">JC</div>
+          <div style="flex:1;"><div style="font-size:12px;font-weight:700;color:var(--text);">Juan dela Cruz</div><div style="font-size:10px;color:var(--muted);">0.83L saved · 8.3km shorter</div></div>
+          <div style="text-align:right;"><div style="font-size:13px;font-weight:800;color:var(--green);font-family:var(--mono);">₱94.62</div><div style="font-size:9px;color:var(--muted);">94% eff.</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:.5px solid var(--border);">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--red-l);color:var(--red);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">LV</div>
+          <div style="flex:1;"><div style="font-size:12px;font-weight:700;color:var(--text);">Lito Villanueva</div><div style="font-size:10px;color:var(--muted);">0.78L saved · 7.8km shorter</div></div>
+          <div style="text-align:right;"><div style="font-size:13px;font-weight:800;color:var(--green);font-family:var(--mono);">₱88.92</div><div style="font-size:9px;color:var(--muted);">93% eff.</div></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--red-l);color:var(--red);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">MS</div>
+          <div style="flex:1;"><div style="font-size:12px;font-weight:700;color:var(--text);">Miguel Santos</div><div style="font-size:10px;color:var(--muted);">0.69L saved · 6.8km shorter</div></div>
+          <div style="text-align:right;"><div style="font-size:13px;font-weight:800;color:var(--green);font-family:var(--mono);">₱78.66</div><div style="font-size:9px;color:var(--muted);">89% eff.</div></div>
+        </div>
+      </div>
+
+      <!-- FUEL PRICE TRACKER -->
+      <div style="margin:10px 14px 14px;background:white;border-radius:14px;border:.5px solid var(--border);padding:12px 14px;">
+        <div style="font-size:12px;font-weight:800;color:var(--text);margin-bottom:10px;">Fuel Price Tracker · May 2026</div>
+        <div class="fbar-wrap">
+          <div class="fbar-row">
+            <span class="fbar-lbl" style="width:42px;font-size:9px;">May 1</span>
+            <div class="fbar-track"><div class="fbar-fill" style="width:74%;animation-delay:.1s"></div></div>
+            <span class="fbar-val" style="font-size:10px;">₱111/L</span>
+          </div>
+          <div class="fbar-row">
+            <span class="fbar-lbl" style="width:42px;font-size:9px;">May 8</span>
+            <div class="fbar-track"><div class="fbar-fill" style="width:78%;animation-delay:.2s"></div></div>
+            <span class="fbar-val" style="font-size:10px;">₱112/L</span>
+          </div>
+          <div class="fbar-row">
+            <span class="fbar-lbl" style="width:42px;font-size:9px;">May 15</span>
+            <div class="fbar-track"><div class="fbar-fill" style="width:82%;animation-delay:.3s"></div></div>
+            <span class="fbar-val" style="font-size:10px;">₱113/L</span>
+          </div>
+          <div class="fbar-row">
+            <span class="fbar-lbl" style="width:42px;font-size:9px;">Today</span>
+            <div class="fbar-track"><div class="fbar-fill" style="width:86%;animation-delay:.4s;background:linear-gradient(90deg,var(--red),#FF5A60)"></div></div>
+            <span class="fbar-val" style="font-size:10px;color:var(--red);">₱114/L</span>
+          </div>
+        </div>
+        <div style="margin-top:8px;background:var(--red-l);border-radius:8px;padding:7px 10px;font-size:10px;color:var(--red);font-weight:700;">
+          ↑ +₱3/L this month · AI routes auto-adjusted · Savings target maintained
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══════════ PRIVACY & ETHICS ══════════ -->
+  <div id="d-privacy" class="screen">
+    <div class="hdr">
+      <div class="hdr-top">
+        <div><div class="hdr-title">Privacy & Ethics</div><div class="hdr-sub">PH Data Privacy Act · AI Fairness</div></div>
+        <button class="backbtn" onclick="dShow('main')">← Back</button>
+      </div>
+    </div>
+    <div class="sync on"><span class="dot"></span>Compliance audit: Last run May 21, 2026</div>
+    <div class="scroll" style="padding-top:12px">
+      <div class="priv-item alert-item">
+        <div class="pi-top"><span class="pi-icon">🔒</span><span class="pi-title">PH Data Privacy Act 2012</span><span class="pi-status ok">Compliant</span></div>
+        <div class="pi-body">All GPS location data encrypted at-rest (AES-256) and in-transit (TLS 1.3). Rider data stored only for operational purpose with 90-day retention.</div>
+      </div>
+      <div class="priv-item alert-item">
+        <div class="pi-top"><span class="pi-icon">📍</span><span class="pi-title">Location Data Consent</span><span class="pi-status ok">Obtained</span></div>
+        <div class="pi-body">Explicit written consent obtained from all 24 riders. Location tracked only during active shifts (6AM–10PM). Data is not shared with third parties.</div>
+      </div>
+      <div class="priv-item">
+        <div class="pi-top"><span class="pi-icon">⚖️</span><span class="pi-title">AI Algorithmic Fairness</span><span class="pi-status ok">Audited</span></div>
+        <div class="pi-body">Route workload balanced across riders. AI cannot assign disproportionate stops based on personal attributes. Monthly bias audit required.</div>
+      </div>
+      <div class="priv-item warn-item">
+        <div class="pi-top"><span class="pi-icon">📋</span><span class="pi-title">NPC Registration</span><span class="pi-status warn">Pending</span></div>
+        <div class="pi-body">Registration with National Privacy Commission required within 30 days of system launch. Deadline: June 30, 2026.</div>
+      </div>
+      <div class="priv-item">
+        <div class="pi-top"><span class="pi-icon">🛡️</span><span class="pi-title">Customer Package Data</span><span class="pi-status ok">Secure</span></div>
+        <div class="pi-body">Recipient names, addresses, and COD amounts are anonymized in AI training datasets. Riders see only what is needed for delivery.</div>
+      </div>
+      <div class="priv-item">
+        <div class="pi-top"><span class="pi-icon">📱</span><span class="pi-title">Offline Data Storage</span><span class="pi-status ok">Encrypted</span></div>
+        <div class="pi-body">Cached stop data on rider devices is encrypted. Remote wipe capability available. Device loss protocol documented and tested.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bnav">
+    <button class="ni active" id="dn-main" onclick="dShow('main')"><span class="nicon">📊</span>Dashboard</button>
+    <button class="ni" id="dn-fleet" onclick="dShow('fleet')"><span class="nicon">🏍</span>Fleet</button>
+    <button class="ni" id="dn-fuel" onclick="dShow('fuel')"><span class="nicon">⛽</span>Fuel</button>
+    <button class="ni" id="dn-privacy" onclick="dShow('privacy')"><span class="nicon">🔒</span>Privacy</button>
+  </div>
+
+</div><!-- /phone-dash -->
+
+<script>
+function dShow(name){
+  ['main','fleet','fuel','privacy'].forEach(s=>{
+    const e=document.getElementById('d-'+s);
+    if(e) e.classList.remove('active');
+    const n=document.getElementById('dn-'+s);
+    if(n) n.classList.remove('active');
+  });
+  const sc=document.getElementById('d-'+name);
+  if(sc) sc.classList.add('active');
+  const nv=document.getElementById('dn-'+name);
+  if(nv) nv.classList.add('active');
+}
+
+/* ROI BARS */
+const roiData=[
+  {label:'Y1 Cost',val:850000,type:'cost'},
+  {label:'Y1 Save',val:987000,type:'saving'},
+  {label:'Y2 Cost',val:200000,type:'cost'},
+  {label:'Y2 Save',val:1014000,type:'saving'},
+  {label:'Y3 Cost',val:200000,type:'cost'},
+  {label:'Y3 Save',val:959000,type:'saving'},
+];
+const maxV=Math.max(...roiData.map(d=>d.val));
+const rc=document.getElementById('roi-bars');
+if(rc){
+  roiData.forEach((d,i)=>{
+    const h=Math.round((d.val/maxV)*52)+8;
+    const wrap=document.createElement('div');
+    wrap.className='roi-bw';
+    wrap.innerHTML=`<div class="roi-b ${d.type}" style="height:${h}px"></div><div class="roi-bl">${d.label}</div>`;
+    rc.appendChild(wrap);
+  });
+}
+
+/* LIVE FUEL TICKER */
+let fuelInt=2736;
+setInterval(()=>{
+  fuelInt += Math.floor(Math.random()*10)+3;
+  ['dash-fuel','dash-total','dash-fuel-hero-val'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent='₱'+fuelInt.toLocaleString();
+  });
+},3500);
+
+let syncMins=1;
+setInterval(()=>{
+  syncMins++;
+},60000);
+</script>
+</body>
+</html>
